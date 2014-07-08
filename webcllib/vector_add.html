@@ -1,0 +1,31 @@
+<!doctype HTML>
+<html>
+  <head>
+    <script id="clKernel" type="text/x-opencl">
+      kernel void ckVectorAdd(global float* vectorIn1, 
+                          global float* vectorIn2,
+                          global float* vectorOut,
+                          uint uiVectorWidth) {
+      uint x = get_global_id(0);
+      if (x >= uiVectorWidth){
+        return;
+      }
+      // add the vector elements
+      vectorOut[x] = vectorIn1[x] + vectorIn2[x];
+    }
+    </script>
+    <script type='text/javascript' src='vector_add_webcl.js'></script>
+  </head>
+  <body> 
+    <p>A</p>
+    <p id="DIVA"></p><br />
+    <p>B</p>
+    <p id="DIVB"></p><br />
+    <p>A+B CPU computation</p><button id="CPUButton">go</button>
+    <p id="DIVC_CPU"></p> <p>time with CPU : </p>
+    <p id="benchmarkCPU"></p><br />
+    <p>A+B GPU computation</p><button id="GPUButton">go</button>
+    <p id="DIVC_GPU"></p>
+    <p>time with GPU : </p> <p id="benchmarkGPU"></p>
+  </body>
+</html>
