@@ -1,7 +1,7 @@
 open Js
 
 (** 5.1 Types *)
-type clboolean = bool
+type clboolean = bool t
 type clint = int
 type cllong = int
 type cluint = int
@@ -43,7 +43,7 @@ class type webCLProgram = object
   method release : unit meth
   method createKernel : js_string t -> webCLKernel t meth
   method build : unit meth
-  method build_fromDevice : webCLDevice t js_array t -> unit meth
+  method build_fromDeviceList : webCLDevice t js_array t -> unit meth
 end
 
 class type webCLCommandQueue = object
@@ -74,7 +74,9 @@ class type webCLContext = object
 end
 
 class type webCL = object
-  method createContext : webCLDevice t -> webCLContext t meth
+  method createContext : webCLContext t meth
+  method createContext_withDevice : webCLDevice -> webCLContext t meth
+  method createContext_withDeviceList : webCLDevice t js_array t -> webCLContext t meth
   method releaseAll : unit meth
 
   method getPlatforms : webCLPlatform t js_array t meth

@@ -92,13 +92,13 @@ let getAllGPUDevicesFrom plats webcl =
   for i = 0 to (plats##length) -1 do
     let p = Optdef.get (array_get plats i) 
 		       (fun _ -> failwith "no platform found") in
-      nb_devices := !nb_devices + (p##getDevices_withType(webcl##_DEVICE_TYPE_GPU_))##length
+      nb_devices := !nb_devices + (p##getDevices())##length
   done;
   let devs = jsnew array_length (!nb_devices) in
     for i = 0 to (plats##length) -1 do
       let p = Optdef.get (array_get plats i) 
 	                 (fun _ -> failwith "no platform found") in
-        let pdevs = (p##getDevices_withType(webcl##_DEVICE_TYPE_GPU_)) in
+        let pdevs = (p##getDevices()) in
         for j = 0 to (pdevs##length -1) do
           let d = Optdef.get (array_get pdevs j) 
 	                     (fun _ -> failwith "no dev found") in
@@ -143,10 +143,14 @@ let computeGpu (webcl: WebCL.webCL t) a b length =
   and platforms = webcl##getPlatforms()
   and devices = getAllGPUDevicesFromAllPlatforms webcl
   in 
-    let first_device = Optdef.get (array_get devices 0) 
-			       (fun _ -> failwith "no device found") 
+    Firebug.console##log (Js.string ((string_of_int platforms##length)^" platform(s) found"));
+    Firebug.console##log (Js.string ((string_of_int devices##length)^" device(s) found"));
+    let gpu_device = Optdef.get (array_get devices 1) 
+			        (fun _ -> failwith "no device found") 
   in
-    let ctx = webcl##createContext(first_device) 
+    Firebug.console##log(Js.string "selected device : ");
+    Firebug.console##log (gpu_device##getInfo_DEVICENAME(webcl##_DEVICE_NAME_));
+    let ctx = webcl##createContext_withDevice(gpu_device) 
     and bufSize = length * 4
   in
     let buf1 = ctx##createBuffer(webcl##_MEM_READ_ONLY_, bufSize)
@@ -154,12 +158,8 @@ let computeGpu (webcl: WebCL.webCL t) a b length =
     and buf3 = ctx##createBuffer(webcl##_MEM_WRITE_ONLY_, bufSize)
     and clprog = ctx##createProgram(src)
   in
-    Firebug.console##log (Js.string ((string_of_int platforms##length)^" platform(s) found"));
-    Firebug.console##log (Js.string ((string_of_int devices##length)^" device(s) found"));
-    let first_device = Optdef.get (array_get devices 0) 
-			       (fun _ -> failwith "no device found") in
-    Firebug.console##log (first_device##getInfo_DEVICENAME(webcl##_DEVICE_NAME_));
-    clprog##build_fromDevice(devices);
+    clprog##build_fromDeviceList(array_from [|gpu_device|]);
+    Firebug.console##log (Js.string "program build");
     let kern = clprog##createKernel(Js.string "ckVectorAdd")
   in
     kern##setArg_fromBuffer(0, buf1);
@@ -168,16 +168,19 @@ let computeGpu (webcl: WebCL.webCL t) a b length =
     kern##setArg_fromIntArray(3,(int32array (Array.make 1 length)));
     let localWS = [|8|]
     and globalWS = [|32|] in
-    let cmdQueue = ctx##createCommandQueue_fromDevice(first_device) in
-      (*ignore (debug "la 1");*)
-      cmdQueue##enqueueWriteBuffer_float32array(buf1, true, 0, bufSize, inBuf1);
-      (*ignore (debug "la 2");*)
-      cmdQueue##enqueueWriteBuffer_float32array(buf2, false, 0, bufSize,inBuf2);
+    let cmdQueue = ctx##createCommandQueue_fromDevice(gpu_device) in
+      Firebug.console##log (Js.string "queue created");
+ 
+      cmdQueue##enqueueWriteBuffer_float32array(buf1, _true, 0, bufSize, inBuf1);
+      cmdQueue##enqueueWriteBuffer_float32array(buf2, _true, 0, bufSize, inBuf2);
+      
+      Firebug.console##log (Js.string "inBuffers writen");
 
       cmdQueue##enqueueNDRangeKernel(kern,1,null,(array_from globalWS),(array_from localWS));
-      cmdQueue##enqueueReadBuffer_float32array(buf3, false, 0, bufSize, outBuf);
+      cmdQueue##enqueueReadBuffer_float32array(buf3, _true, 0, bufSize, outBuf);
       cmdQueue##finish ();
-      fillDivWith_float32Array outBuf "DIVCC_GPU" length;
+      Firebug.console##log (Js.string "commande queue finished");
+      fillDivWith_float32Array outBuf "DIVC_GPU" length;
       ()
 
 let initEvents cl a b length =
