@@ -75,7 +75,7 @@ end
 
 class type webCL = object
   method createContext : webCLContext t meth
-  method createContext_withDevice : webCLDevice -> webCLContext t meth
+  method createContext_withDevice : webCLDevice t -> webCLContext t meth
   method createContext_withDeviceList : webCLDevice t js_array t -> webCLContext t meth
   method releaseAll : unit meth
 
