@@ -5,8 +5,6 @@ type clboolean = bool t
 type clint = int
 type cllong = int
 type cluint = int
-type clenum
-type void
 type errorCode
 type memflags
 type contextInfo
@@ -102,3 +100,36 @@ end
 let getWebCL (w : Dom_html.window t) = 
   let w : window t = Js.Unsafe.coerce w in
     w##webcl
+
+let getAllGPUDevicesFrom plats webcl = 
+  let nb_devices = ref 0 in
+  for i = 0 to (plats##length) -1 do
+    let p = Optdef.get (array_get plats i) 
+		       (fun _ -> failwith "no platform found") in
+      nb_devices := !nb_devices + (p##getDevices())##length
+  done;
+  let devs = jsnew array_length (!nb_devices) in
+    for i = 0 to (plats##length) -1 do
+      let p = Optdef.get (array_get plats i) 
+	                 (fun _ -> failwith "no platform found") in
+        let pdevs = (p##getDevices()) in
+        for j = 0 to (pdevs##length -1) do
+          let d = Optdef.get (array_get pdevs j) 
+	                     (fun _ -> failwith "no dev found") in
+          array_set devs (i+j) d
+        done
+    done; 
+  devs
+
+let getAllGPUDevicesFromAllPlatforms webcl =
+  getAllGPUDevicesFrom webcl##getPlatforms() webcl 
+
+(* returns the name of the device dev.
+   dev must be associated to the webcl object *)
+let getDeviceName webcl dev =
+  dev##getInfo_DEVICENAME(webcl##_DEVICE_NAME_)
+
+let buildProgram clprog device = 
+  let dev_typedArray = jsnew array_length (1) in
+    array_set dev_typedArray 0 device;
+    clprog##build_fromDeviceList(dev_typedArray)

@@ -1,16 +1,12 @@
 open Lwt
 open Js
 open Dom_html
+open WebCL
 
 (*print etc*)
 let alert f = Printf.ksprintf (fun s -> Dom_html.window##alert(Js.string s); failwith s) f
 let debug f = Printf.ksprintf (fun s -> Dom_html.window##alert(Js.string s)) f
 let error f = Printf.ksprintf (fun s -> Firebug.console##error (Js.string s); failwith s) f
-
-let from_float32array a = 
-  let arr = jsnew Typed_array.float32Array(Array.length a) in
-  Array.iteri (fun i v -> Typed_array.set arr i v) a;
-  arr
 
 (*qui transforme un array en float32array*)
 let float32array a =
@@ -87,29 +83,6 @@ let initArrays length =
     fillDivWithArray arr_B "DIVB";
     arr_A,arr_B
 
-let getAllGPUDevicesFrom plats webcl = 
-  let nb_devices = ref 0 in
-  for i = 0 to (plats##length) -1 do
-    let p = Optdef.get (array_get plats i) 
-		       (fun _ -> failwith "no platform found") in
-      nb_devices := !nb_devices + (p##getDevices())##length
-  done;
-  let devs = jsnew array_length (!nb_devices) in
-    for i = 0 to (plats##length) -1 do
-      let p = Optdef.get (array_get plats i) 
-	                 (fun _ -> failwith "no platform found") in
-        let pdevs = (p##getDevices()) in
-        for j = 0 to (pdevs##length -1) do
-          let d = Optdef.get (array_get pdevs j) 
-	                     (fun _ -> failwith "no dev found") in
-          array_set devs (i+j) d
-        done
-    done; 
-  devs
-
-let getAllGPUDevicesFromAllPlatforms webcl =
-  getAllGPUDevicesFrom webcl##getPlatforms() webcl
-
 (* retourne le temps que met un calcul et le résultat associé *)
 let time computation = 
   let d = (jsnew date_now ())##getTime() in
@@ -140,16 +113,13 @@ let computeGpu (webcl: WebCL.webCL t) a b length =
   and inBuf2 = float32array b
   and outBuf = float32array (Array.make length 0.)
   and src = get_source "clKernel"
-  and platforms = webcl##getPlatforms()
   and devices = getAllGPUDevicesFromAllPlatforms webcl
   in 
-    Firebug.console##log (Js.string ((string_of_int platforms##length)^" platform(s) found"));
     Firebug.console##log (Js.string ((string_of_int devices##length)^" device(s) found"));
-    let gpu_device = Optdef.get (array_get devices 1) 
-			        (fun _ -> failwith "no device found") 
+    let gpu_device = Optdef.get (array_get devices 1) (fun _ -> failwith "no device found")
   in
     Firebug.console##log(Js.string "selected device : ");
-    Firebug.console##log (gpu_device##getInfo_DEVICENAME(webcl##_DEVICE_NAME_));
+    Firebug.console##log (WebCL.getDeviceName webcl gpu_device);
     let ctx = webcl##createContext_withDevice(gpu_device) 
     and bufSize = length * 4
   in
@@ -158,8 +128,7 @@ let computeGpu (webcl: WebCL.webCL t) a b length =
     and buf3 = ctx##createBuffer(webcl##_MEM_WRITE_ONLY_, bufSize)
     and clprog = ctx##createProgram(src)
   in
-    clprog##build_fromDeviceList(array_from [|gpu_device|]);
-    Firebug.console##log (Js.string "program build");
+    WebCL.buildProgram clprog gpu_device;
     let kern = clprog##createKernel(Js.string "ckVectorAdd")
   in
     kern##setArg_fromBuffer(0, buf1);
@@ -169,17 +138,12 @@ let computeGpu (webcl: WebCL.webCL t) a b length =
     let localWS = [|8|]
     and globalWS = [|32|] in
     let cmdQueue = ctx##createCommandQueue_fromDevice(gpu_device) in
-      Firebug.console##log (Js.string "queue created");
- 
       cmdQueue##enqueueWriteBuffer_float32array(buf1, _true, 0, bufSize, inBuf1);
       cmdQueue##enqueueWriteBuffer_float32array(buf2, _true, 0, bufSize, inBuf2);
-      
-      Firebug.console##log (Js.string "inBuffers writen");
-
       cmdQueue##enqueueNDRangeKernel(kern,1,null,(array_from globalWS),(array_from localWS));
       cmdQueue##enqueueReadBuffer_float32array(buf3, _true, 0, bufSize, outBuf);
       cmdQueue##finish ();
-      Firebug.console##log (Js.string "commande queue finished");
+
       fillDivWith_float32Array outBuf "DIVC_GPU" length;
       ()
 
@@ -208,9 +172,8 @@ let initEvents cl a b length =
 	Js._true;
        )
 
-
 let start cl =
-  let length = 30 in
+  let length = 30000 in
   let (a,b) = initArrays length in
   initEvents cl a b length
     
