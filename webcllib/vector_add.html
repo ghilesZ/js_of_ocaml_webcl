@@ -16,16 +16,11 @@
     </script>
     <script type='text/javascript' src='vector_add_webcl.js'></script>
   </head>
-  <body> 
-    <p>A</p>
-    <p id="DIVA"></p><br />
-    <p>B</p>
-    <p id="DIVB"></p><br />
-    <p>A+B CPU computation</p><button id="CPUButton">go</button>
-    <p id="DIVC_CPU"></p> <p>time with CPU : </p>
-    <p id="benchmarkCPU"></p><br />
-    <p>A+B GPU computation</p><button id="GPUButton">go</button>
-    <p id="DIVC_GPU"></p>
-    <p>time with GPU : </p> <p id="benchmarkGPU"></p>
+  <body>
+    <h1> Addition of large vectors </h1>
+    <p> vectors size : </p> <input id="inputsize" type="text" size="25" name="inputsize">
+    <p> selected device : </p> <select id="selectDevice"></select>
+    <p> computing time : </p> <p id="computingTime"></p>
+    <button id="GoButton">go</button>
   </body>
 </html>

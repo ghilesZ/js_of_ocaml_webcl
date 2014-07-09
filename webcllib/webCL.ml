@@ -121,12 +121,12 @@ let getAllGPUDevicesFrom plats webcl =
     done; 
   devs
 
-let getAllGPUDevicesFromAllPlatforms webcl =
+let getAllGPUDevicesFromAllPlatforms (webcl: webCL t) =
   getAllGPUDevicesFrom webcl##getPlatforms() webcl 
 
 (* returns the name of the device dev.
    dev must be associated to the webcl object *)
-let getDeviceName webcl dev =
+let getDeviceName (webcl: webCL t) dev =
   dev##getInfo_DEVICENAME(webcl##_DEVICE_NAME_)
 
 let buildProgram clprog device = 
